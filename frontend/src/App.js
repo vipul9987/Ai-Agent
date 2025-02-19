@@ -8,6 +8,8 @@ function App() {
     const [loading, setLoading] = useState(false);
     const [storedData, setStoredData] = useState(null); // Store last request data for regeneration
 
+    const API_URL = "https://ai-agent-y71e.onrender.com"
+    
     const generateMeta = async (isRegenerate = false) => {
       setLoading(true);
       setResults([]);
@@ -21,7 +23,7 @@ function App() {
       }
   
       try {
-          const response = await fetch("http://localhost:5000/generate-meta", {
+          const response = await fetch(`${API_URL}/generate-meta`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(requestData),

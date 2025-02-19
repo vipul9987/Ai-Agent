@@ -83,6 +83,10 @@ async function generateMetaContent(pageContent, keywords, variantCount) {
 }
 
 
+app.post("/",(req,res)=>{
+    res.send("hello");
+})
+
 // API Endpoint to Generate Meta Content
 app.post("/generate-meta", async (req, res) => {
     let { url, keywords, variantCount } = req.body;
