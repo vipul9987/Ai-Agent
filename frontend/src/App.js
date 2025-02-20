@@ -20,9 +20,14 @@ function App() {
             requestData = { url, keywords, variantCount };
             setStoredData(requestData);
         }
-
+        // https://ai-agent-1-2zhv.onrender.com/
         try {
-            const response = await axios.post("https://ai-agent-y71e.onrender.com/generate-meta", requestData);
+            const response = await axios.post(
+                "https://ai-agent-1-2zhv.onrender.com/generate-meta",
+                requestData,
+                { headers: { "Content-Type": "application/json" } } // Ensure JSON format
+            );
+            
             if (Array.isArray(response.data.metaContent)) {
                 setResults(response.data.metaContent);
             } else {

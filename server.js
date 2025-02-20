@@ -12,6 +12,7 @@ const genAI = new GoogleGenerativeAI(API_KEY);
 
 app.use(express.json());
 app.use(cors());
+app.use(cors({ origin: "https://ai-agent-i8rn-p2q7ajton-vipul9987s-projects.vercel.app/" }));
 
 // Cache last request for regeneration
 let lastRequest = null;
@@ -19,7 +20,7 @@ let lastRequest = null;
 // Function to fetch webpage content
 async function fetchPageContent(url) {
     try {
-        const response = await axios.get(url, { timeout: 10000 });
+        const response = await axios.get(url, { timeout: 100    000 });
         const $ = cheerio.load(response.data);
         const pageText = $("h1, h2, h3, p").text().trim();
         return pageText.length > 100 ? pageText : null;
@@ -88,10 +89,6 @@ app.get("/test", (req, res) => {
 });
 
 
-
-app.post("/",(req,res)=>{
-    res.send("hello");
-})
 
 // API Endpoint to Generate Meta Content
 app.post("/generate-meta", async (req, res) => {
