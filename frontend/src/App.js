@@ -12,7 +12,7 @@ function App() {
     const generateMeta = async (isRegenerate = false) => {
         setLoading(true);
         setResults([]);
-
+    
         let requestData;
         if (isRegenerate && storedData) {
             requestData = storedData;
@@ -20,26 +20,29 @@ function App() {
             requestData = { url, keywords, variantCount };
             setStoredData(requestData);
         }
-        // https://ai-agent-1-2zhv.onrender.com/
-        try {
-            const response = await axios.post(
-                "https://ai-agent-1-2zhv.onrender.com/generate-meta",
-                requestData,
-                { headers: { "Content-Type": "application/json" } } // Ensure JSON format
-            );
-            
+    
+        axios.post("https://ai-agent-1-2zhv.onrender.com/generate-meta", requestData, {
+            headers: { "Content-Type": "application/json" }
+        })
+        .then(response => {
+            console.log("Response Data:", response.data);
+    
             if (Array.isArray(response.data.metaContent)) {
                 setResults(response.data.metaContent);
             } else {
+                console.error("Invalid format:", response.data);
                 setResults([{ title: "Invalid Response", description: "Meta content format is incorrect." }]);
             }
-        } catch (error) {
+        })
+        .catch(error => {
+            console.error("Axios Error:", error.response ? error.response.data : error.message);
             setResults([{ title: "Server Error", description: "Please try again." }]);
-        }
-
-        setLoading(false);
+        })
+        .finally(() => {
+            setLoading(false);
+        });
     };
-
+    
     return (
         <div style={{ maxWidth: "600px", margin: "20px auto", textAlign: "center" }}>
             <h1>Meta Title & Description Generator</h1>
