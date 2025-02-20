@@ -20,7 +20,7 @@ let lastRequest = null;
 // Function to fetch webpage content
 async function fetchPageContent(url) {
     try {
-        const response = await axios.get(url, { timeout: 100    000 });
+        const response = await axios.get(url, { timeout: 10000 });
         const $ = cheerio.load(response.data);
         const pageText = $("h1, h2, h3, p").text().trim();
         return pageText.length > 100 ? pageText : null;
