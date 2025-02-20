@@ -11,8 +11,11 @@ const API_KEY = process.env.GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(API_KEY);
 
 app.use(express.json());
-app.use(cors());
-app.use(cors({ origin: "https://ai-agent-i8rn-p2q7ajton-vipul9987s-projects.vercel.app/" }));
+app.use(cors({
+    origin: "https://ai-agent-i8rn-p2q7ajton-vipul9987s-projects.vercel.app", // Remove trailing `/`
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type"]
+}));
 
 // Cache last request for regeneration
 let lastRequest = null;
