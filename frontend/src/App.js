@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import axios from "axios";
 
 function App() {
     const [url, setUrl] = useState("");
@@ -8,41 +9,32 @@ function App() {
     const [loading, setLoading] = useState(false);
     const [storedData, setStoredData] = useState(null); // Store last request data for regeneration
 
-    const API_URL = "https://ai-agent-y71e.onrender.com"
-    
     const generateMeta = async (isRegenerate = false) => {
-      setLoading(true);
-      setResults([]);
-  
-      let requestData;
-      if (isRegenerate && storedData) {
-          requestData = storedData;
-      } else {
-          requestData = { url, keywords, variantCount };
-          setStoredData(requestData);
-      }
-  
-      try {
-          const response = await fetch(`${API_URL}/generate-meta`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(requestData),
-          });
-  
-          const data = await response.json();
-          
-          if (Array.isArray(data.metaContent)) {
-              setResults(data.metaContent);
-          } else {
-              setResults([{ title: "Invalid Response", description: "Meta content format is incorrect." }]);
-          }
-      } catch (error) {
-          setResults([{ title: "Server Error", description: "Please try again." }]);
-      }
-  
-      setLoading(false);
-  };
-  
+        setLoading(true);
+        setResults([]);
+
+        let requestData;
+        if (isRegenerate && storedData) {
+            requestData = storedData;
+        } else {
+            requestData = { url, keywords, variantCount };
+            setStoredData(requestData);
+        }
+
+        try {
+            const response = await axios.post("https://ai-agent-y71e.onrender.com/generate-meta", requestData);
+            if (Array.isArray(response.data.metaContent)) {
+                setResults(response.data.metaContent);
+            } else {
+                setResults([{ title: "Invalid Response", description: "Meta content format is incorrect." }]);
+            }
+        } catch (error) {
+            setResults([{ title: "Server Error", description: "Please try again." }]);
+        }
+
+        setLoading(false);
+    };
+
     return (
         <div style={{ maxWidth: "600px", margin: "20px auto", textAlign: "center" }}>
             <h1>Meta Title & Description Generator</h1>

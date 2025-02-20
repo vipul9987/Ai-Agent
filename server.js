@@ -82,6 +82,12 @@ async function generateMetaContent(pageContent, keywords, variantCount) {
     }
 }
 
+// testing route
+app.get("/test", (req, res) => {
+    res.json({ message: "API is working fine!" });
+});
+
+
 
 app.post("/",(req,res)=>{
     res.send("hello");
