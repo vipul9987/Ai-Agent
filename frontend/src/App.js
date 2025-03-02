@@ -22,6 +22,8 @@ function App() {
         }
     
         axios.post("https://ai-agent-1-2zhv.onrender.com/generate-meta", requestData, {
+        // axios.post("http://localhost:5000/generate-meta", requestData, {
+
             headers: { "Content-Type": "application/json" }
         })
         .then(response => {
