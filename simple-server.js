@@ -32,15 +32,15 @@ app.get('/api/health', (_, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 
-// Simple meta generation endpoint
+// Simple meta generation endpoint (new path)
 app.post("/api/generate-meta", async (req, res) => {
   try {
     console.log("Received request:", req.body);
     const { url, keywords, variantCount } = req.body;
 
     if (!url || !keywords) {
-      return res.status(400).json({ 
-        error: "URL and keywords are required." 
+      return res.status(400).json({
+        error: "URL and keywords are required."
       });
     }
 
@@ -53,16 +53,51 @@ app.post("/api/generate-meta", async (req, res) => {
     ];
 
     // Return the response
-    res.json({ 
-      metaContent, 
-      url, 
-      keywords, 
-      variantCount 
+    res.json({
+      metaContent,
+      url,
+      keywords,
+      variantCount
     });
   } catch (error) {
     console.error("Error:", error);
-    res.status(500).json({ 
-      error: "Internal Server Error: " + error.message 
+    res.status(500).json({
+      error: "Internal Server Error: " + error.message
+    });
+  }
+});
+
+// Legacy endpoint for backward compatibility
+app.post("/generate-meta", async (req, res) => {
+  try {
+    console.log("Received request to legacy endpoint:", req.body);
+    const { url, keywords, variantCount } = req.body;
+
+    if (!url || !keywords) {
+      return res.status(400).json({
+        error: "URL and keywords are required."
+      });
+    }
+
+    // Generate hardcoded response for testing
+    const metaContent = [
+      {
+        title: `${keywords} - Example Website Title (Legacy Endpoint)`,
+        description: `This is an example description for ${url} that includes keywords like ${keywords}. This is just a placeholder to verify the API is working correctly.`
+      }
+    ];
+
+    // Return the response
+    res.json({
+      metaContent,
+      url,
+      keywords,
+      variantCount
+    });
+  } catch (error) {
+    console.error("Error in legacy endpoint:", error);
+    res.status(500).json({
+      error: "Internal Server Error: " + error.message
     });
   }
 });
