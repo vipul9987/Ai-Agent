@@ -39,19 +39,34 @@ function App() {
             setStoredData(requestData);
         }
 
-        // Determine the API URL based on environment
-        const apiUrl = window.location.hostname === 'localhost'
-            ? "http://localhost:5000/api/generate-meta"
-            : "/api/generate-meta";
+        // First check if the server is healthy
+        try {
+            // Determine the base URL based on environment
+            const baseUrl = window.location.hostname === 'localhost'
+                ? "http://localhost:5000"
+                : "";
 
-        console.log("Sending request to:", apiUrl);
-        console.log("Request data:", requestData);
+            const healthUrl = `${baseUrl}/api/health`;
+            console.log("Checking server health at:", healthUrl);
 
-        axios.post(apiUrl, requestData, {
-            headers: { "Content-Type": "application/json" },
-            timeout: 60000 // 60 second timeout
-        })
-        .then(response => {
+            // Check server health first
+            const healthResponse = await axios.get(healthUrl, { timeout: 10000 });
+            console.log("Health check response:", healthResponse.data);
+
+            if (healthResponse.data.status !== 'ok') {
+                throw new Error('Server health check failed');
+            }
+
+            // If health check passes, proceed with the main request
+            const apiUrl = `${baseUrl}/api/generate-meta`;
+            console.log("Sending request to:", apiUrl);
+            console.log("Request data:", requestData);
+
+            const response = await axios.post(apiUrl, requestData, {
+                headers: { "Content-Type": "application/json" },
+                timeout: 60000 // 60 second timeout
+            });
+
             console.log("Response Data:", response.data);
 
             if (Array.isArray(response.data.metaContent)) {
@@ -61,15 +76,31 @@ function App() {
                 setError("Invalid response format from server");
                 setResults([{ title: "Invalid Response", description: "Meta content format is incorrect." }]);
             }
-        })
-        .catch(error => {
-            console.error("Axios Error:", error.response ? error.response.data : error.message);
-            setError(error.response?.data?.error || "Server error. Please try again.");
+        } catch (error) {
+            console.error("Error:", error);
+            let errorMessage = "Server error. Please try again.";
+
+            if (error.response) {
+                // The request was made and the server responded with a status code
+                // that falls out of the range of 2xx
+                console.error("Response data:", error.response.data);
+                console.error("Response status:", error.response.status);
+                errorMessage = error.response.data?.error || errorMessage;
+            } else if (error.request) {
+                // The request was made but no response was received
+                console.error("No response received:", error.request);
+                errorMessage = "No response from server. Please check your connection.";
+            } else {
+                // Something happened in setting up the request that triggered an Error
+                console.error("Request setup error:", error.message);
+                errorMessage = error.message || errorMessage;
+            }
+
+            setError(errorMessage);
             setResults([{ title: "Server Error", description: "Please try again." }]);
-        })
-        .finally(() => {
+        } finally {
             setLoading(false);
-        });
+        }
     };
 
     return (

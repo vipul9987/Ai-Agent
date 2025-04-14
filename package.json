@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
+    "start": "node simple-server.js",
+    "start:full": "node server.js",
     "build": "cd frontend && npm install && npm run build",
-    "dev": "nodemon server.js"
+    "dev": "nodemon simple-server.js"
   },
   "engines": {
     "node": ">=16.0.0"
