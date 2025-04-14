@@ -39,10 +39,17 @@ function App() {
             setStoredData(requestData);
         }
 
-        // For local development: "http://localhost:5000/generate-meta"
-        // For production with relative path: "/api/generate-meta"
-        axios.post("/api/generate-meta", requestData, {
-            headers: { "Content-Type": "application/json" }
+        // Determine the API URL based on environment
+        const apiUrl = window.location.hostname === 'localhost'
+            ? "http://localhost:5000/api/generate-meta"
+            : "/api/generate-meta";
+
+        console.log("Sending request to:", apiUrl);
+        console.log("Request data:", requestData);
+
+        axios.post(apiUrl, requestData, {
+            headers: { "Content-Type": "application/json" },
+            timeout: 60000 // 60 second timeout
         })
         .then(response => {
             console.log("Response Data:", response.data);

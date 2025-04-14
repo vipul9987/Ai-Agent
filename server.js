@@ -19,8 +19,13 @@ if (!API_KEY) {
 
 const genAI = new GoogleGenerativeAI(API_KEY);
 
+// Add health check routes
+app.get('/api/health', (_, res) => {
+    res.json({ status: 'ok', message: 'Server is running' });
+});
+
 // Add a route to check API key status
-app.get('/api/check-api-key', (req, res) => {
+app.get('/api/check-api-key', (_, res) => {
     if (!API_KEY) {
         return res.status(500).json({ error: 'API key is not configured' });
     }
@@ -28,11 +33,14 @@ app.get('/api/check-api-key', (req, res) => {
 });
 
 app.use(express.json());
-// Enable CORS for all routes
+// Enable CORS for all routes with maximum permissiveness
 app.use(cors({
     origin: '*',
-    methods: ['GET', 'POST'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204
 }));
 
 // Get the directory name using ES modules
@@ -90,6 +98,14 @@ async function fetchPageContent(url) {
 
 
 async function generateMetaContent(pageContent, keywords, variantCount) {
+    // Limit content length to avoid token limits
+    const truncatedContent = pageContent.length > 3000 ? pageContent.substring(0, 3000) + '...' : pageContent;
+
+    // Ensure variantCount is within reasonable limits
+    const safeVariantCount = Math.min(Math.max(1, variantCount), 5);
+
+    console.log(`Generating ${safeVariantCount} variants with ${truncatedContent.length} chars of content`);
+
     const prompt = `
     ## AI Prompt for Meta Title & Description Generator
 
@@ -102,8 +118,8 @@ async function generateMetaContent(pageContent, keywords, variantCount) {
       - **Meta title** (50-60 chars) includes at least **1 keyword**.
       - **Meta description** (150-160 chars) includes **2-3 keywords**.
 
-    **3️⃣ Generate ${variantCount} Variants**
-    - Provide ${variantCount} unique versions of meta titles and descriptions.
+    **3️⃣ Generate ${safeVariantCount} Variants**
+    - Provide ${safeVariantCount} unique versions of meta titles and descriptions.
 
     **4️⃣ Return Only JSON Array (No Extra Text)**
     - Output **ONLY** a JSON array:
@@ -113,36 +129,66 @@ async function generateMetaContent(pageContent, keywords, variantCount) {
     ]
 
     **📝 Webpage Content:**
-    ${pageContent}
+    ${truncatedContent}
 
     **🔑 Target Keywords:** ${keywords}
     `;
 
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        console.log('Initializing Gemini model...');
+        const model = genAI.getGenerativeModel({
+            model: "gemini-1.5-flash",
+            generationConfig: {
+                temperature: 0.7,
+                topP: 0.9,
+                topK: 40,
+                maxOutputTokens: 1024,
+                responseMimeType: "application/json"
+            }
+        });
+
+        console.log('Sending request to Gemini...');
         const result = await model.generateContent(prompt);
-        const response = await result.response.text();
+        const response = result.response.text();
 
-        // ✅ Debugging: Print the raw AI response
-        console.log("🔍 Gemini Response:", response);
+        console.log('Received response from Gemini');
 
-        // ✅ Extract JSON from response (fixes invalid format)
-        const jsonMatch = response.match(/\[\s*\{[\s\S]*\}\s*\]/);
-        if (jsonMatch) {
-            return JSON.parse(jsonMatch[0]); // Extract valid JSON array
+        // Try to parse as JSON directly first
+        try {
+            const parsedJson = JSON.parse(response);
+            console.log('Successfully parsed JSON directly');
+            return parsedJson;
+        } catch (parseError) {
+            console.log('Direct JSON parsing failed, trying to extract JSON from text...');
+            // ✅ Extract JSON from response (fixes invalid format)
+            const jsonMatch = response.match(/\[\s*\{[\s\S]*\}\s*\]/);
+            if (jsonMatch) {
+                console.log('Found JSON pattern in response');
+                try {
+                    return JSON.parse(jsonMatch[0]); // Extract valid JSON array
+                } catch (extractError) {
+                    console.error('Failed to parse extracted JSON:', extractError);
+                    throw new Error('Invalid JSON format in extracted pattern');
+                }
+            }
+
+            console.error("❌ Invalid AI response format:", response);
+            throw new Error('Could not find valid JSON in response');
         }
-
-        console.error("❌ Invalid AI response format:", response);
-        return [{ title: "Error", description: "Failed to parse AI response." }];
-
     } catch (error) {
-        console.error("❌ AI Generation Error:", error.message);
-        return [{ title: "AI Error", description: "Failed to generate content." }];
+        console.error("❌ AI Generation Error:", error);
+        console.error("Error stack:", error.stack);
+
+        // Return a fallback response
+        return [{
+            title: "Meta Title Generator",
+            description: "Generate SEO-optimized meta titles and descriptions for your website using AI technology."
+        }];
     }
 }
 
 // testing route
-app.get("/test", (req, res) => {
+app.get("/test", (_, res) => {
     res.json({ message: "API is working fine!" });
 });
 
@@ -183,7 +229,7 @@ app.post("/api/generate-meta", async (req, res) => {
 });
 
 // API Endpoint to Regenerate Meta Content
-app.post("/api/regenerate-meta", async (req, res) => {
+app.post("/api/regenerate-meta", async (_, res) => {
     if (!lastRequest) {
         return res.status(400).json({ error: "No previous request found. Generate first." });
     }
@@ -199,7 +245,7 @@ app.post("/api/regenerate-meta", async (req, res) => {
 });
 
 // Catch-all handler: for any request that doesn't match the ones above, send back React's index.html file
-app.get('*', (req, res) => {
+app.get('*', (_, res) => {
     res.sendFile(path.join(__dirname, 'frontend/build', 'index.html'));
 });
 
