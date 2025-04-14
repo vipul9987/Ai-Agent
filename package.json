@@ -1,14 +1,14 @@
 {
   "name": "meta-title-generator",
   "version": "1.0.0",
-  "type": "module",
   "scripts": {
-    "start": "node minimal-server.js",
+    "start": "node diagnostic-server.js",
+    "start:minimal": "node minimal-server.js",
     "start:render": "node render-server.js",
     "start:simple": "node simple-server.js",
     "start:full": "node server.js",
     "build": "cd frontend && npm install && npm run build",
-    "dev": "nodemon minimal-server.js"
+    "dev": "nodemon diagnostic-server.js"
   },
   "engines": {
     "node": ">=16.0.0"
