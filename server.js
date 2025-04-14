@@ -4,19 +4,43 @@ import axios from "axios";
 import * as cheerio from "cheerio";
 import "dotenv/config";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 const API_KEY = process.env.GEMINI_API_KEY;
+
+// Check if API key is available
+if (!API_KEY) {
+    console.error('⚠️ GEMINI_API_KEY is not set in environment variables!');
+    console.error('Please set the GEMINI_API_KEY environment variable with your Google Gemini API key.');
+}
+
 const genAI = new GoogleGenerativeAI(API_KEY);
 
+// Add a route to check API key status
+app.get('/api/check-api-key', (req, res) => {
+    if (!API_KEY) {
+        return res.status(500).json({ error: 'API key is not configured' });
+    }
+    res.json({ status: 'API key is configured' });
+});
+
 app.use(express.json());
+// Enable CORS for all routes
 app.use(cors({
-    origin: "https://ai-agent-i8rn-p2q7ajton-vipul9987s-projects.vercel.app", // Remove trailing `/`
-    // origin: "http://localhost:3000", // Remove trailing `/`
-    methods: ["GET", "POST"],
-    allowedHeaders: ["Content-Type"]
+    origin: '*',
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Get the directory name using ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Serve static files from the React app
+app.use(express.static(path.join(__dirname, 'frontend/build')));
 
 // Cache last request for regeneration
 let lastRequest = null;
@@ -24,12 +48,42 @@ let lastRequest = null;
 // Function to fetch webpage content
 async function fetchPageContent(url) {
     try {
-        const response = await axios.get(url, { timeout: 10000 });
+        // Add http:// prefix if missing
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+            url = 'https://' + url;
+            console.log('Added https:// prefix to URL:', url);
+        }
+
+        console.log('Fetching content from:', url);
+        const response = await axios.get(url, {
+            timeout: 15000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+        });
+
+        console.log('Response received, parsing content...');
         const $ = cheerio.load(response.data);
-        const pageText = $("h1, h2, h3, p").text().trim();
-        return pageText.length > 100 ? pageText : null;
+
+        // Extract text from more elements for better content coverage
+        const pageText = $("h1, h2, h3, h4, h5, p, article, section, .content, .main, main").text().trim();
+
+        console.log(`Extracted ${pageText.length} characters of content`);
+
+        if (pageText.length < 100) {
+            console.log('Not enough content extracted, trying alternative selectors');
+            // Try a more aggressive approach to get content
+            const bodyText = $("body").text().trim();
+            return bodyText.length > 100 ? bodyText.substring(0, 5000) : null;
+        }
+
+        // Limit text length to avoid very large requests
+        return pageText.substring(0, 5000);
     } catch (error) {
         console.error("❌ Error fetching page content:", error.message);
+        if (error.response) {
+            console.error('Response status:', error.response.status);
+        }
         return null;
     }
 }
@@ -95,34 +149,41 @@ app.get("/test", (req, res) => {
 
 
 // API Endpoint to Generate Meta Content
-app.post("/generate-meta", async (req, res) => {
-    let { url, keywords, variantCount } = req.body;
-
-    if (!url || !keywords) {
-        return res.status(400).json({ error: "URL and keywords are required." });
-    }
-
-    variantCount = parseInt(variantCount) || 1;
-    let pageContent = await fetchPageContent(url);
-
-    if (!pageContent) {
-        return res.status(400).json({ error: "Could not extract enough content." });
-    }
-
+app.post("/api/generate-meta", async (req, res) => {
     try {
+        console.log("Received request:", req.body);
+        let { url, keywords, variantCount } = req.body;
+
+        if (!url || !keywords) {
+            console.log("Missing required fields:", { url, keywords });
+            return res.status(400).json({ error: "URL and keywords are required." });
+        }
+
+        variantCount = parseInt(variantCount) || 1;
+        console.log("Fetching content from URL:", url);
+        let pageContent = await fetchPageContent(url);
+
+        if (!pageContent) {
+            console.log("Could not extract content from URL:", url);
+            return res.status(400).json({ error: "Could not extract enough content from the website. Please try a different URL." });
+        }
+
+        console.log("Generating meta content with keywords:", keywords);
         const metaContent = await generateMetaContent(pageContent, keywords, variantCount);
 
         lastRequest = { url, keywords, variantCount, pageContent };
 
+        console.log("Successfully generated meta content");
         res.json({ metaContent, url, keywords, variantCount });
     } catch (error) {
-        console.error("❌ Error generating meta content:", error.message);
-        res.status(500).json({ error: "Internal Server Error" });
+        console.error("❌ Error generating meta content:", error);
+        console.error("Stack trace:", error.stack);
+        res.status(500).json({ error: "Internal Server Error: " + error.message });
     }
 });
 
 // API Endpoint to Regenerate Meta Content
-app.post("/regenerate-meta", async (req, res) => {
+app.post("/api/regenerate-meta", async (req, res) => {
     if (!lastRequest) {
         return res.status(400).json({ error: "No previous request found. Generate first." });
     }
@@ -137,7 +198,12 @@ app.post("/regenerate-meta", async (req, res) => {
     }
 });
 
+// Catch-all handler: for any request that doesn't match the ones above, send back React's index.html file
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'frontend/build', 'index.html'));
+});
+
 // Start Server
 app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`🚀 Server running on port ${PORT}`);
 });

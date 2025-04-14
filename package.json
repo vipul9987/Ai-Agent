@@ -1,5 +1,15 @@
 {
+  "name": "meta-title-generator",
+  "version": "1.0.0",
   "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "build": "cd frontend && npm install && npm run build",
+    "dev": "nodemon server.js"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
     "axios": "^1.7.9",
