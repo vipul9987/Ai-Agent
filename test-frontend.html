@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Meta Generator API</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input, button {
+            padding: 8px;
+            width: 100%;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+            white-space: pre-wrap;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Meta Generator API</h1>
+    
+    <div class="form-group">
+        <label for="url">Website URL:</label>
+        <input type="text" id="url" placeholder="https://example.com" value="https://example.com">
+    </div>
+    
+    <div class="form-group">
+        <label for="keywords">Keywords (comma separated):</label>
+        <input type="text" id="keywords" placeholder="seo, meta tags" value="test, example">
+    </div>
+    
+    <div class="form-group">
+        <label for="variantCount">Number of Variations:</label>
+        <input type="number" id="variantCount" min="1" max="5" value="1">
+    </div>
+    
+    <div class="form-group">
+        <label for="endpoint">Endpoint:</label>
+        <select id="endpoint">
+            <option value="/generate-meta">Legacy: /generate-meta</option>
+            <option value="/api/generate-meta">New: /api/generate-meta</option>
+        </select>
+    </div>
+    
+    <button onclick="testApi()">Test API</button>
+    
+    <div id="result">Results will appear here...</div>
+    
+    <script>
+        async function testApi() {
+            const url = document.getElementById('url').value;
+            const keywords = document.getElementById('keywords').value;
+            const variantCount = document.getElementById('variantCount').value;
+            const endpoint = document.getElementById('endpoint').value;
+            const resultDiv = document.getElementById('result');
+            
+            resultDiv.innerHTML = 'Sending request...';
+            resultDiv.className = '';
+            
+            try {
+                // First check server health
+                try {
+                    const healthResponse = await axios.get('http://localhost:5000/api/health');
+                    resultDiv.innerHTML = `Health check: ${JSON.stringify(healthResponse.data)}\n\nSending main request...`;
+                } catch (healthError) {
+                    resultDiv.innerHTML = `Health check failed: ${healthError.message}\n\nTrying main request anyway...`;
+                }
+                
+                // Send the main request
+                const response = await axios.post(`http://localhost:5000${endpoint}`, {
+                    url,
+                    keywords,
+                    variantCount
+                });
+                
+                resultDiv.innerHTML = `Success!\n\nResponse:\n${JSON.stringify(response.data, null, 2)}`;
+            } catch (error) {
+                resultDiv.className = 'error';
+                if (error.response) {
+                    // The request was made and the server responded with a status code
+                    // that falls out of the range of 2xx
+                    resultDiv.innerHTML = `Error ${error.response.status}: ${error.response.statusText}\n\nResponse data:\n${JSON.stringify(error.response.data, null, 2)}`;
+                } else if (error.request) {
+                    // The request was made but no response was received
+                    resultDiv.innerHTML = `No response received from server. Check if the server is running.`;
+                } else {
+                    // Something happened in setting up the request that triggered an Error
+                    resultDiv.innerHTML = `Error: ${error.message}`;
+                }
+            }
+        }
+    </script>
+</body>
+</html>

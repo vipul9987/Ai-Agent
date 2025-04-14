@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meta Title Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .loading {
+            text-align: center;
+            margin: 20px 0;
+            display: none;
+        }
+        .results {
+            margin-top: 30px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            display: none;
+        }
+        .result-item {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        .result-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        .title {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .description {
+            margin-bottom: 10px;
+        }
+        .error {
+            color: #e74c3c;
+            padding: 10px;
+            background-color: #fadbd8;
+            border-radius: 4px;
+            margin-top: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Meta Title Generator</h1>
+    
+    <div class="form-container">
+        <div class="form-group">
+            <label for="url">Website URL:</label>
+            <input type="text" id="url" placeholder="https://example.com" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="keywords">Keywords (comma separated):</label>
+            <input type="text" id="keywords" placeholder="seo, meta tags, website" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="variantCount">Number of Variations:</label>
+            <select id="variantCount">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="endpoint">API Endpoint:</label>
+            <select id="endpoint">
+                <option value="/generate-meta">Legacy: /generate-meta</option>
+                <option value="/api/generate-meta">New: /api/generate-meta</option>
+            </select>
+        </div>
+        
+        <button id="generate-btn">Generate Meta Content</button>
+    </div>
+    
+    <div id="loading" class="loading">
+        Generating meta content...
+    </div>
+    
+    <div id="error" class="error"></div>
+    
+    <div id="results" class="results">
+        <h2>Generated Meta Content:</h2>
+        <div id="results-container"></div>
+    </div>
+    
+    <script>
+        document.getElementById('generate-btn').addEventListener('click', generateMeta);
+        
+        async function generateMeta() {
+            const url = document.getElementById('url').value;
+            const keywords = document.getElementById('keywords').value;
+            const variantCount = document.getElementById('variantCount').value;
+            const endpoint = document.getElementById('endpoint').value;
+            
+            if (!url || !keywords) {
+                showError('Please fill in all required fields');
+                return;
+            }
+            
+            // Show loading, hide results and error
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+            
+            try {
+                // First check server health
+                try {
+                    const healthResponse = await fetch('http://localhost:5001/api/health');
+                    if (!healthResponse.ok) {
+                        throw new Error('Health check failed');
+                    }
+                } catch (healthError) {
+                    console.warn('Health check failed:', healthError);
+                    // Continue anyway
+                }
+                
+                // Make the main request
+                const response = await fetch(`http://localhost:5001${endpoint}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        url,
+                        keywords,
+                        variantCount: parseInt(variantCount)
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Server error');
+                }
+                
+                const data = await response.json();
+                displayResults(data.metaContent);
+            } catch (error) {
+                showError(error.message || 'An error occurred');
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+        
+        function displayResults(metaContent) {
+            const resultsContainer = document.getElementById('results-container');
+            resultsContainer.innerHTML = '';
+            
+            metaContent.forEach((item, index) => {
+                const resultItem = document.createElement('div');
+                resultItem.className = 'result-item';
+                
+                resultItem.innerHTML = `
+                    <h3>Variation ${index + 1}</h3>
+                    <div class="title">Title: ${item.title}</div>
+                    <div class="description">Description: ${item.description}</div>
+                `;
+                
+                resultsContainer.appendChild(resultItem);
+            });
+            
+            document.getElementById('results').style.display = 'block';
+        }
+        
+        function showError(message) {
+            const errorElement = document.getElementById('error');
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
